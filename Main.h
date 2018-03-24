@@ -1,6 +1,8 @@
 #ifndef Main_h
 #define Main_h
 
+#include <arduino.h>
+
 #include "data\status.html.gz.h"
 #include "data\config.html.gz.h"
 #include "data\fw.html.gz.h"
@@ -16,13 +18,11 @@
 //include Application header file
 #include "WirelessInput.h"
 
-#define APPLICATION_NAME "DomoChip Wireless Input"
-#define APPLICATION_CLASS WebInput
-#define APPLICATION_VAR webInput
+#define APPLICATION1_NAME "WInput"
+#define APPLICATION1_DESC "DomoChip Wireless Input"
+#define APPLICATION1_CLASS WebInput
 
 #define VERSION_NUMBER "1.1"
-
-#define MODEL "WInput"
 
 #define DEFAULT_AP_SSID "WirelessInput"
 #define DEFAULT_AP_PSK "PasswordInput"
@@ -59,5 +59,4 @@
 #endif
 
 #endif
-
 

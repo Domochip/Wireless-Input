@@ -17,7 +17,7 @@ $templatesWithCustoFiles=@{
         ShortApplicationName=$shortApplicationName
         ;
         HTMLContent=@'
-        <h2 class="content-subhead">Input<span id="l2"><h6 style="display:inline"><b> Loading...</b></h6></span></h2>
+        <h2 class="content-subhead">Input<span id="l3"><h6 style="display:inline"><b> Loading...</b></h6></span></h2>
         Input state : <span id="input"></span><br>
         Last Jeedom Result : <span id="ljr"></span><br>
 '@
@@ -28,10 +28,10 @@ $templatesWithCustoFiles=@{
             $.each(GS1,function(k,v){
                 $('#'+k).html(v);
             })
-            $("#l2").fadeOut();
+            $("#l3").fadeOut();
         })
         .fail(function(){
-            $("#l2").html('<h4 style="display:inline"><b> Failed</b></h2>');
+            $("#l3").html('<h4 style="display:inline"><b> Failed</b></h2>');
         });
 '@
     }
@@ -43,6 +43,10 @@ $templatesWithCustoFiles=@{
         ShortApplicationName=$shortApplicationName
         ;
         HTMLContent=@'
+        <h2 class="content-subhead">Input<span id="l1"><h6 style="display:inline"><b> Loading...</b></h6></span></h2>
+        <form class="pure-form pure-form-aligned" id='f1'>
+            <fieldset>
+
     <div class="pure-control-group">
         <label for="inv" class="pure-checkbox">Invert Input</label>
         <input id='inv' name='inv' type="checkbox">
@@ -78,6 +82,12 @@ $templatesWithCustoFiles=@{
             </div>
         </div>
     </div>
+                <div class="pure-controls">
+                    <input type='submit' value='Save' class="pure-button pure-button-primary" disabled>
+                </div>
+            </fieldset>
+        </form>
+        <span id='r1'></span>
 '@
         ;
         HTMLScript=@'
@@ -94,9 +104,38 @@ $templatesWithCustoFiles=@{
         };
 
         $("#jt").change(onJTChange);
+
+        $("#f1").submit(function(event){
+            $("#r1").html("Saving Configuration...");
+            $.post("/sc1",$("#f1").serialize(),function(){ 
+                $("#f1").hide();
+                var reload5sec=document.createElement('script');
+                reload5sec.text='var count=4;var cdi=setInterval(function(){$("#cd").text(count);if(!count){clearInterval(cdi);location.reload();}count--;},1000);';
+                $('#r1').html('<h3><b>Configuration saved <span style="color: green;">successfully</span>. System is restarting now.</b></h3>This page will be reloaded in <span id="cd">5</span>sec.').append(reload5sec);
+            }).fail(function(){
+                $('#r1').html('<h3><b>Configuration <span style="color: red;">error</span>.</b></h3>');
+            });
+            event.preventDefault();
+        });
 '@
         ;
-        HTMLFillinConfigForm=@'
+        HTMLScriptInReady=@'
+        $.getJSON("/gc1", function(GC1){
+
+            $.each(GC1,function(k,v){
+
+                if($('#'+k).prop('type')!='checkbox') $('#'+k).val(v);
+                else $('#'+k).prop("checked",v);
+
+                $('#'+k).trigger("change");
+            })
+
+            $("input[type=submit]",$("#f1")).prop("disabled",false);
+            $("#l1").fadeOut();
+        })
+        .fail(function(){
+            $("#l1").html('<h6 style="display:inline;color:red;"><b> Failed</b></h6>');
+        });
 '@
     }
     ;
