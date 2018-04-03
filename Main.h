@@ -22,7 +22,7 @@
 #define APPLICATION1_DESC "DomoChip Wireless Input"
 #define APPLICATION1_CLASS WebInput
 
-#define VERSION_NUMBER "1.1"
+#define VERSION_NUMBER "1.1.1"
 
 #define DEFAULT_AP_SSID "WirelessInput"
 #define DEFAULT_AP_PSK "PasswordInput"

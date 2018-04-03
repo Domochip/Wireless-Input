@@ -20,8 +20,8 @@ void WebInput::TimerTick()
     needSend = true;
   }
 
-  //if Jeedom upload not enabled then return
-  if (!jeedom.enabled)
+  //if Home Automation upload not enabled then return
+  if (!ha.enabled)
     return;
 
     //if input pin is RX
@@ -31,31 +31,36 @@ void WebInput::TimerTick()
 #endif
 
   //send if input changed or last HTTP result is wrong
-  if (needSend || _jeedomRequestResult != 200)
+  if (needSend || _haRequestResult != 200)
   {
 
     Serial.print(F("Send State : "));
     Serial.println(_state ? 1 : 0);
 
-    //Build request
-    String _request = String(F("&type=virtual&id=")) + jeedom.cmdId + F("&value=") + (_state ? 1 : 0);
-
     String completeURI;
-    completeURI = completeURI + F("http") + (jeedom.tls ? F("s") : F("")) + F("://") + jeedom.hostname + F("/core/api/jeeApi.php?apikey=") + jeedom.apiKey + _request;
+
+    //Build request
+    switch (ha.enabled)
+    {
+    case 1: //jeedom
+      String _request = String(F("&type=virtual&id=")) + ha.cmdId + F("&value=") + (_state ? 1 : 0);
+      completeURI = completeURI + F("http") + (ha.tls ? F("s") : F("")) + F("://") + ha.hostname + F("/core/api/jeeApi.php?apikey=") + ha.jeedom.apiKey + _request;
+      break;
+    }
 
     //create HTTP request
     HTTPClient http;
 
     //if tls is enabled or not, we need to provide certificate fingerPrint
-    if (!jeedom.tls)
+    if (!ha.tls)
       http.begin(completeURI);
     else
     {
       char fpStr[41];
-      http.begin(completeURI, Utils::FingerPrintA2S(fpStr, jeedom.fingerPrint));
+      http.begin(completeURI, Utils::FingerPrintA2S(fpStr, ha.fingerPrint));
     }
 
-    _jeedomRequestResult = http.GET();
+    _haRequestResult = http.GET();
     http.end();
   }
 }
@@ -66,31 +71,47 @@ void WebInput::SetConfigDefaultValues()
 {
   invert = false;
 
-  jeedom.enabled = false;
-  jeedom.tls = true;
-  jeedom.hostname[0] = 0;
-  jeedom.apiKey[0] = 0;
-  jeedom.cmdId = 0;
-  memset(jeedom.fingerPrint, 0, 20);
+  ha.enabled = 0;
+  ha.tls = true;
+  ha.hostname[0] = 0;
+  ha.cmdId = 0;
+  memset(ha.fingerPrint, 0, 20);
+
+  ha.jeedom.apiKey[0] = 0;
 };
 //------------------------------------------
 //Parse JSON object into configuration properties
 void WebInput::ParseConfigJSON(JsonObject &root)
 {
+  //Retrocompatibility block to be removed after v1.1.1 --
+  if (root["je"].success())
+    ha.enabled = root["je"] ? 1 : 0;
+  if (root["jt"].success())
+    ha.tls = root["jt"];
+  if (root["jh"].success())
+    strlcpy(ha.hostname, root["jh"], sizeof(ha.hostname));
+  if (root["ci"].success())
+    ha.cmdId = root["ci"];
+  if (root["jfp"].success())
+    Utils::FingerPrintS2A(ha.fingerPrint, root["jfp"]);
+  // --
+
   if (root["inv"].success())
     invert = root["inv"];
-  if (root["je"].success())
-    jeedom.enabled = root["je"];
-  if (root["jt"].success())
-    jeedom.tls = root["jt"];
-  if (root["jh"].success())
-    strlcpy(jeedom.hostname, root["jh"], sizeof(jeedom.hostname));
+
+  if (root[F("hae")].success())
+    ha.enabled = root[F("hae")];
+  if (root[F("hatls")].success())
+    ha.tls = root[F("hatls")];
+  if (root[F("hah")].success())
+    strlcpy(ha.hostname, root["hah"], sizeof(ha.hostname));
+  if (root["hacid"].success())
+    ha.cmdId = root["hacid"];
+  if (root["hafp"].success())
+    Utils::FingerPrintS2A(ha.fingerPrint, root["hafp"]);
+
   if (root["ja"].success())
-    strlcpy(jeedom.apiKey, root["ja"], sizeof(jeedom.apiKey));
-  if (root["ci"].success())
-    jeedom.cmdId = root["ci"];
-  if (root["jfp"].success())
-    Utils::FingerPrintS2A(jeedom.fingerPrint, root["jfp"]);
+    strlcpy(ha.jeedom.apiKey, root["ja"], sizeof(ha.jeedom.apiKey));
 };
 //------------------------------------------
 //Parse HTTP POST parameters in request into configuration properties
@@ -104,30 +125,39 @@ bool WebInput::ParseConfigWebRequest(AsyncWebServerRequest *request)
   else
     invert = false;
 
-  if (request->hasParam(F("je"), true))
-    jeedom.enabled = (request->getParam(F("je"), true)->value() == F("on"));
-  else
-    jeedom.enabled = false;
-  if (request->hasParam(F("jt"), true))
-    jeedom.tls = (request->getParam(F("jt"), true)->value() == F("on"));
-  else
-    jeedom.tls = false;
-  if (request->hasParam(F("jh"), true) && request->getParam(F("jh"), true)->value().length() < sizeof(jeedom.hostname))
-    strcpy(jeedom.hostname, request->getParam(F("jh"), true)->value().c_str());
-  //put apiKey into temporary one for predefpassword
-  if (request->hasParam(F("ja"), true) && request->getParam(F("ja"), true)->value().length() < sizeof(tempApiKey))
-    strcpy(tempApiKey, request->getParam(F("ja"), true)->value().c_str());
-  if (request->hasParam(F("ci"), true))
-    jeedom.cmdId = request->getParam(F("ci"), true)->value().toInt();
-  if (request->hasParam(F("jfp"), true))
-    Utils::FingerPrintS2A(jeedom.fingerPrint, request->getParam(F("jfp"), true)->value().c_str());
+  if (request->hasParam(F("hae"), true))
+    ha.enabled = request->getParam(F("hae"), true)->value().toInt();
 
-  //check for previous apiKey (there is a predefined special password that mean to keep already saved one)
-  if (strcmp_P(tempApiKey, appDataPredefPassword))
-    strcpy(jeedom.apiKey, tempApiKey);
+  //if an home Automation system is enabled then get common param
+  if (ha.enabled)
+  {
+    if (request->hasParam(F("hatls"), true))
+      ha.tls = (request->getParam(F("hatls"), true)->value() == F("on"));
+    else
+      ha.tls = false;
+    if (request->hasParam(F("hah"), true) && request->getParam(F("hah"), true)->value().length() < sizeof(ha.hostname))
+      strcpy(ha.hostname, request->getParam(F("hah"), true)->value().c_str());
+    if (request->hasParam(F("hacid"), true))
+      ha.cmdId = request->getParam(F("hacid"), true)->value().toInt();
+    if (request->hasParam(F("hafp"), true))
+      Utils::FingerPrintS2A(ha.fingerPrint, request->getParam(F("hafp"), true)->value().c_str());
+  }
 
-  if (!jeedom.hostname[0] || !jeedom.apiKey[0] || !jeedom.cmdId)
-    jeedom.enabled = false;
+  //Now get specific param
+  switch (ha.enabled)
+  {
+  case 1: //Jeedom
+    char tempApiKey[48 + 1];
+    //put apiKey into temporary one for predefpassword
+    if (request->hasParam(F("ja"), true) && request->getParam(F("ja"), true)->value().length() < sizeof(tempApiKey))
+      strcpy(tempApiKey, request->getParam(F("ja"), true)->value().c_str());
+    //check for previous apiKey (there is a predefined special password that mean to keep already saved one)
+    if (strcmp_P(tempApiKey, appDataPredefPassword))
+      strcpy(ha.jeedom.apiKey, tempApiKey);
+    if (!ha.hostname[0] || !ha.jeedom.apiKey[0] || !ha.cmdId)
+      ha.enabled = 0;
+    break;
+  }
 
   return true;
 };
@@ -141,22 +171,19 @@ String WebInput::GenerateConfigJSON(bool forSaveFile = false)
 
   gc = gc + F("\"inv\":") + (invert ? true : false);
 
-  gc = gc + F(",\"je\":") + (jeedom.enabled ? true : false);
-  gc = gc + F(",\"jt\":") + (jeedom.tls ? true : false);
-  gc = gc + F(",\"jh\":\"") + jeedom.hostname + '"';
+  gc = gc + F(",\"hae\":") + ha.enabled;
+  gc = gc + F(",\"hatls\":") + ha.tls;
+  gc = gc + F(",\"hah\":\"") + ha.hostname + '"';
+  gc = gc + F(",\"hacid\":") + ha.cmdId;
+  gc = gc + F(",\"hafp\":\"") + Utils::FingerPrintA2S(fpStr, ha.fingerPrint, forSaveFile ? 0 : ':') + '"';
+
   if (forSaveFile)
   {
-    gc = gc + F(",\"ja\":\"") + jeedom.apiKey + '"';
-    Utils::FingerPrintA2S(fpStr, jeedom.fingerPrint);
+    if (ha.enabled == 1)
+      gc = gc + F(",\"ja\":\"") + ha.jeedom.apiKey + '"';
   }
   else
-  {
-    //there is a predefined special password (mean to keep already saved one)
-    gc = gc + F(",\"ja\":\"") + (__FlashStringHelper *)appDataPredefPassword + '"';
-    Utils::FingerPrintA2S(fpStr, jeedom.fingerPrint, ':');
-  }
-  gc = gc + F(",\"ci\":") + jeedom.cmdId;
-  gc = gc + F(",\"jfp\":\"") + fpStr + '"';
+    gc = gc + F(",\"ja\":\"") + (__FlashStringHelper *)appDataPredefPassword + '"'; //predefined special password (mean to keep already saved one)
 
   gc += '}';
 
@@ -169,7 +196,7 @@ String WebInput::GenerateStatusJSON()
   String gs('{');
 
   gs = gs + F("\"input\":") + _state;
-  gs = gs + F(",\"ljr\":") + _jeedomRequestResult;
+  gs = gs + F(",\"lhar\":") + _haRequestResult;
 
   gs += '}';
 

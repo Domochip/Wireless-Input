@@ -21,18 +21,23 @@ private:
 
   typedef struct
   {
-    bool enabled = false;
-    bool tls = false;
-    char hostname[64 + 1] = {0};
     char apiKey[48 + 1] = {0};
-    int cmdId = 0;
-    byte fingerPrint[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   } Jeedom;
-  Jeedom jeedom;
+
+  typedef struct
+  {
+    byte enabled = 0; //0 : no HA; 1 : Jeedom; 2 : ...
+    bool tls = false;
+    byte fingerPrint[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    char hostname[64 + 1] = {0};
+    int cmdId = 0;
+    Jeedom jeedom;
+  } HomeAutomation;
+  HomeAutomation ha;
 
   bool _state = false;
   SimpleTimer _refreshTimer;
-  int _jeedomRequestResult = 0;
+  int _haRequestResult = 0;
 
   void TimerTick();
 
