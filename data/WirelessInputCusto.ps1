@@ -55,41 +55,127 @@ $templatesWithCustoFiles=@{
         <h3 class="content-subhead">Home Automation</h3>
 
         <div class="pure-control-group">
-            <label for="hae">Type</label>
-            <select id='hae' name='hae'>
-                <option value="0">None</option>
-                <option value="1">Jeedom</option>
+            <label for="haproto">Type</label>
+            <select id='haproto' name='haproto'>
+                <option value="0">Disabled</option>
+                <option value="1">HTTP</option>
+                <option value="2">MQTT</option>
             </select>
         </div>
 
-        <div id='ha' style='display:none'>
+        <div id='hae' style='display:none'>
+
             <div class="pure-control-group">
                 <label for="hatls">SSL/TLS</label>
                 <input type='checkbox' id='hatls' name='hatls'>
             </div>
             <div class="pure-control-group">
-                <label for="hah">Hostname</label>
-                <input type='text' id='hah' name='hah' maxlength='64' pattern='[A-Za-z0-9-.]+' size='50' title='DNS name or IP of the Jeedom server'>
+                <label for="hahost">Hostname</label>
+                <input type='text' id='hahost' name='hahost' maxlength='64' pattern='[A-Za-z0-9-.]+' size='50' placeholder="IP or DNS Name">
                 <span class="pure-form-message-inline">(Hostname should match with certificate name if SSL/TLS is enabled)</span>
             </div>
 
-            <div id='j' style='display:none'>
+            <div id='hahe'>
 
                 <div class="pure-control-group">
-                    <label for="ja">ApiKey</label>
-                    <input type='password' id='ja' name='ja' maxlength='48' pattern='[A-Za-z0-9-.]+' size=50 title='APIKey from Jeedom configuration webpage'>
+                    <label for="hahtype">Type</label>
+                    <select id='hahtype' name='hahtype'>
+                        <option value="0">Generic</option>
+                        <option value="1">Jeedom Virtual</option>
+                    </select>
                 </div>
-            </div>
-            <div class="pure-control-group">
-            <label for="hacid">Command Id</label>
-                <input type='number' id='hacid' name='hacid' min='0' max='65535'>
-                <span class="pure-form-message-inline">(HA Command Id)</span>
-            </div>
-            <div id='hatlse'>
+
                 <div class="pure-control-group">
-                    <label for="hafp">TLS FingerPrint</label>
-                    <input type='text' id='hafp' name='hafp' maxlength='59' pattern='^([0-9A-Fa-f]{2}[ :-]*){19}([0-9A-Fa-f]{2})$' size='65'>
-                    <span class="pure-form-message-inline">(separators are : &lt;none&gt;,&lt;space&gt;,:,-)</span>
+                    <label for="hahcid">Command Id</label>
+                    <input type='number' id='hahcid' name='hahcid' min='0' max='65535'>
+                </div>
+
+                <div id='hahtlse'>
+                    <div class="pure-control-group">
+                        <label for="hahfp">TLS FingerPrint</label>
+                        <input type='text' id='hahfp' name='hahfp' maxlength='59' pattern='^([0-9A-Fa-f]{2}[ :-]*){19}([0-9A-Fa-f]{2})$' size='65'>
+                        <span class="pure-form-message-inline">(separators are : &lt;none&gt;,&lt;space&gt;,:,-)</span>
+                    </div>
+                </div>
+
+                <div id='hah0'>
+                    <div class="pure-control-group">
+                        <label for="hahgup">URI Pattern</label>
+                        <input type='text' id='hahgup' name='hahgup' maxlength='150' size='65' placeholder="Used to generate requests URI">
+                        <span id="hahgupi" name="hahgupi" class="infotip">?</span>
+                    </div>
+
+                    <div class="pure-control-group" id="hahgupidiv" name="hahgupidiv" style="display:none;">
+                        <label></label>
+                        <div class="infotipdiv">
+                            URI Pattern placeholders : <br>
+                            <b>$tls$</b> : replaced by 's' for HTTPS connection<br>
+                            <b>$host$</b> : replaced by hostname<br>
+                            <b>$id$</b> : replaced the Comand ID<br>
+                            <b>$val$</b> : replaced by the value to push (0 or 1)<br>
+                            Ex : http<b>$tls$</b>://<b>$host$</b>/api/pushValue?id=<b>$id$</b>&amp;value=<b>$val$</b>
+                        </div>
+                    </div>
+                </div>
+
+                <div id='hah1'>
+                    <div class="pure-control-group">
+                        <label for="hahjak">ApiKey</label>
+                        <input type='password' id='hahjak' name='hahjak' maxlength='48' pattern='[A-Za-z0-9-.]+' size=50 title='APIKey from Jeedom configuration webpage'>
+                    </div>
+                </div>
+
+            </div>
+
+            <div id='hame'>
+
+                <div class="pure-control-group">
+                    <label for="hamtype">Type</label>
+                    <select id='hamtype' name='hamtype'>
+                        <option value="0">Generic</option>
+                    </select>
+                    <span id="hamtype0i" name="hamtype0i" class="infotip">?</span>
+                </div>
+                <div class="pure-control-group" id="hamtype0div" name="hamtype0div" style="display:none;">
+                    <label></label>
+                    <div class="infotipdiv">
+                        Published topics : <br>
+                        <b>/status</b> : Input state (0 or 1)<br>
+                        Subscribed topics : <br>
+                        <b>None</b>
+                    </div>
+                </div>
+
+                <div class="pure-control-group">
+                    <label for="hamport">Port</label>
+                    <input type='number' id='hamport' name='hamport' min='1' max='65535'>
+                </div>
+                <div class="pure-control-group">
+                    <label for="hamu">Username</label>
+                    <input type='text' id='hamu' name='hamu' maxlength='64' placeholder="optional">
+                </div>
+                <div class="pure-control-group">
+                    <label for="hamp">Password</label>
+                    <input type='password' id='hamp' name='hamp' maxlength='64' placeholder="optional">
+                </div>
+
+                <div id='hamgbte'>
+                    <div class="pure-control-group">
+                        <label for="hamgbt">Base Topic</label>
+                        <input type='text' id='hamgbt' name='hamgbt' maxlength='64'>
+                        <span id="hamgbti" name="hamgbti" class="infotip">?</span>
+                    </div>
+
+                    <div class="pure-control-group" id="hamgbtidiv" name="hamgbtidiv" style="display:none;">
+                        <label></label>
+                        <div class="infotipdiv">
+                            Base Topic placeholders : <br>
+                            <b>$sn$</b> : Serial Number of this device<br>
+                            <b>$mac$</b> : WiFi MAC address of this device<br>
+                            <b>$model$</b> : Model of this device<br>
+                            Ex : DomoChip/<b>$sn$</b> or <b>$model$</b>/<b>$mac$</b>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -102,24 +188,59 @@ $templatesWithCustoFiles=@{
 '@
         ;
         HTMLScript=@'
-        function onHAEChange(){
-            switch($("#hae").val()){
+        $("#haproto").change(function(){
+            switch($("#haproto").val()){
                 case "0":
-                    $("#ha").hide();
+                    $("#hae").hide();
                     break;
                 case "1":
-                    $("#j").show();
-                    $("#ha").show();
+                    $("#hae").show();
+                    $("#hahe").show();
+                    $("#hame").hide();
+                    break;
+                case "2":
+                    $("#hae").show();
+                    $("#hahe").hide();
+                    $("#hame").show();
                     break;
             }
-        };
-        $("#hae").change(onHAEChange);
+        });
+        
+        $("#hahtype").change(function(){
+            switch($("#hahtype").val()){
+                case "0":
+                    $("#hah0").show();
+                    $("#hah1").hide();
+                    break;
+                case "1":
+                    $("#hah0").hide();
+                    $("#hah1").show();
+                    break;
+            }
+        });
+        $("#hahgupi").click(function(){$("#hahgupidiv").slideToggle(300);});
+        
+        $("#hamtype").change(function(){
+            switch($("#hamtype").val()){
+                case "0":
+                    $("#hamgbte").show();
+                    break;
+            }
+        });
+        $("#hamtype0i").click(function(){$("#hamtype0div").slideToggle(300);});
+        $("#hamgbti").click(function(){$("#hamgbtidiv").slideToggle(300);});
 
-        function onHATLSChange(){
-            if($("#hatls").prop("checked")) $("#hatlse").show();
-            else $("#hatlse").hide();
-        };
-        $("#hatls").change(onHATLSChange);
+        
+        $("#hatls").change(function(){
+            if($("#hatls").prop("checked")){
+                $("#hahtlse").show();
+                $("#hamport").val(8883);
+            }
+            else{
+                $("#hahtlse").hide();
+                $("#hamport").val(1883);
+            }
+        });
 
         $("#f1").submit(function(event){
             $("#r1").html("Saving Configuration...");
