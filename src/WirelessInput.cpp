@@ -130,7 +130,7 @@ void WebInput::TimerTick()
           completeTopic = ha.mqtt.generic.baseTopic;
 
           //check for final slash
-          if (completeTopic.length() && completeTopic.charAt(completeTopic.length()) != '/')
+          if (completeTopic.length() && completeTopic.charAt(completeTopic.length()-1) != '/')
             completeTopic += '/';
           //complete the topic
           completeTopic += F("status");
