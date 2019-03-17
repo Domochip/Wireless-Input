@@ -22,7 +22,7 @@ void WebInput::TimerTick()
     needSend = true;
   }
 
-    //if input pin is RX
+  //if input pin is RX
 #if SIGNAL_PIN == 3
   //restart Serial
   Serial.begin(SERIAL_SPEED);
@@ -76,11 +76,16 @@ void WebInput::TimerTick()
 
       //if tls is enabled or not, we need to provide certificate fingerPrint
       if (!ha.tls)
-        http.begin(completeURI);
+      {
+        WiFiClient client;
+        http.begin(client, completeURI);
+      }
       else
       {
+        WiFiClientSecure clientSecure;
         char fpStr[41];
-        http.begin(completeURI, Utils::FingerPrintA2S(fpStr, ha.http.fingerPrint));
+        clientSecure.setFingerprint(Utils::FingerPrintA2S(fpStr, ha.http.fingerPrint));
+        http.begin(clientSecure, completeURI);
       }
 
       _haSendResult = (http.GET() == 200);
@@ -130,7 +135,7 @@ void WebInput::TimerTick()
           completeTopic = ha.mqtt.generic.baseTopic;
 
           //check for final slash
-          if (completeTopic.length() && completeTopic.charAt(completeTopic.length()-1) != '/')
+          if (completeTopic.length() && completeTopic.charAt(completeTopic.length() - 1) != '/')
             completeTopic += '/';
           //complete the topic
           completeTopic += F("status");
@@ -178,42 +183,42 @@ void WebInput::SetConfigDefaultValues()
 };
 //------------------------------------------
 //Parse JSON object into configuration properties
-void WebInput::ParseConfigJSON(JsonObject &root)
+void WebInput::ParseConfigJSON(DynamicJsonDocument &doc)
 {
-  if (root[F("inv")].success())
-    invert = root[F("inv")];
+  if (!doc[F("inv")].isNull())
+    invert = doc[F("inv")];
 
-  if (root[F("haproto")].success())
-    ha.protocol = root[F("haproto")];
-  if (root[F("hatls")].success())
-    ha.tls = root[F("hatls")];
-  if (root[F("hahost")].success())
-    strlcpy(ha.hostname, root[F("hahost")], sizeof(ha.hostname));
+  if (!doc[F("haproto")].isNull())
+    ha.protocol = doc[F("haproto")];
+  if (!doc[F("hatls")].isNull())
+    ha.tls = doc[F("hatls")];
+  if (!doc[F("hahost")].isNull())
+    strlcpy(ha.hostname, doc[F("hahost")], sizeof(ha.hostname));
 
-  if (root[F("hahtype")].success())
-    ha.http.type = root[F("hahtype")];
-  if (root[F("hahfp")].success())
-    Utils::FingerPrintS2A(ha.http.fingerPrint, root[F("hahfp")]);
-  if (root[F("hahcid")].success())
-    ha.http.cmdId = root[F("hahcid")];
+  if (!doc[F("hahtype")].isNull())
+    ha.http.type = doc[F("hahtype")];
+  if (!doc[F("hahfp")].isNull())
+    Utils::FingerPrintS2A(ha.http.fingerPrint, doc[F("hahfp")]);
+  if (!doc[F("hahcid")].isNull())
+    ha.http.cmdId = doc[F("hahcid")];
 
-  if (root[F("hahgup")].success())
-    strlcpy(ha.http.generic.uriPattern, root[F("hahgup")], sizeof(ha.http.generic.uriPattern));
+  if (!doc[F("hahgup")].isNull())
+    strlcpy(ha.http.generic.uriPattern, doc[F("hahgup")], sizeof(ha.http.generic.uriPattern));
 
-  if (root[F("hahjak")].success())
-    strlcpy(ha.http.jeedom.apiKey, root[F("hahjak")], sizeof(ha.http.jeedom.apiKey));
+  if (!doc[F("hahjak")].isNull())
+    strlcpy(ha.http.jeedom.apiKey, doc[F("hahjak")], sizeof(ha.http.jeedom.apiKey));
 
-  if (root[F("hamtype")].success())
-    ha.mqtt.type = root[F("hamtype")];
-  if (root[F("hamport")].success())
-    ha.mqtt.port = root[F("hamport")];
-  if (root[F("hamu")].success())
-    strlcpy(ha.mqtt.username, root[F("hamu")], sizeof(ha.mqtt.username));
-  if (root[F("hamp")].success())
-    strlcpy(ha.mqtt.password, root[F("hamp")], sizeof(ha.mqtt.password));
+  if (!doc[F("hamtype")].isNull())
+    ha.mqtt.type = doc[F("hamtype")];
+  if (!doc[F("hamport")].isNull())
+    ha.mqtt.port = doc[F("hamport")];
+  if (!doc[F("hamu")].isNull())
+    strlcpy(ha.mqtt.username, doc[F("hamu")], sizeof(ha.mqtt.username));
+  if (!doc[F("hamp")].isNull())
+    strlcpy(ha.mqtt.password, doc[F("hamp")], sizeof(ha.mqtt.password));
 
-  if (root[F("hamgbt")].success())
-    strlcpy(ha.mqtt.generic.baseTopic, root[F("hamgbt")], sizeof(ha.mqtt.generic.baseTopic));
+  if (!doc[F("hamgbt")].isNull())
+    strlcpy(ha.mqtt.generic.baseTopic, doc[F("hamgbt")], sizeof(ha.mqtt.generic.baseTopic));
 };
 //------------------------------------------
 //Parse HTTP POST parameters in request into configuration properties
@@ -422,32 +427,36 @@ bool WebInput::AppInit(bool reInit)
 };
 //------------------------------------------
 //Return HTML Code to insert into Status Web page
-const uint8_t* WebInput::GetHTMLContent(WebPageForPlaceHolder wp){
-      switch(wp){
-    case status:
-      return (const uint8_t*) status1htmlgz;
-      break;
-    case config:
-      return (const uint8_t*) config1htmlgz;
-      break;
-    default:
-      return nullptr;
-      break;
+const uint8_t *WebInput::GetHTMLContent(WebPageForPlaceHolder wp)
+{
+  switch (wp)
+  {
+  case status:
+    return (const uint8_t *)status1htmlgz;
+    break;
+  case config:
+    return (const uint8_t *)config1htmlgz;
+    break;
+  default:
+    return nullptr;
+    break;
   };
   return nullptr;
 };
 //and his Size
-size_t WebInput::GetHTMLContentSize(WebPageForPlaceHolder wp){
-  switch(wp){
-    case status:
-      return sizeof(status1htmlgz);
-      break;
-    case config:
-      return sizeof(config1htmlgz);
-      break;
-    default:
-      return 0;
-      break;
+size_t WebInput::GetHTMLContentSize(WebPageForPlaceHolder wp)
+{
+  switch (wp)
+  {
+  case status:
+    return sizeof(status1htmlgz);
+    break;
+  case config:
+    return sizeof(config1htmlgz);
+    break;
+  default:
+    return 0;
+    break;
   };
   return 0;
 };
