@@ -1,19 +1,23 @@
 <div id="applicationName" style="display: none;">WirelessInput</div>
 <div id="shortApplicationName" style="display: none;">WInput</div>
 
-<h2 class="content-subhead">Input<span id="l3"><h6 style="display:inline"><b> Loading...</b></h6></span></h2>
+<h2 class="content-subhead">Input<span id="l"><h6 style="display:inline"><b> Loading...</b></h6></span></h2>
 Input state : <span id="input"></span><br>
 Last HomeAutomation Result : <span id="lhar"></span><br>
 
 <script>
-    $.getJSON("/gs1", function(GS1){
+    //QuerySelector Prefix is added by load function to know into what element queySelector need to look for
+    //var qsp = '#contentX ';
 
-        $.each(GS1,function(k,v){
-            $('#'+k).html(v);
-        })
-        $("#l3").fadeOut();
-    })
-    .fail(function(){
-        $("#l3").html('<h4 style="display:inline"><b> Failed</b></h2>');
-    });
+    getJSON("/gs"+qsp[8],
+        function(GS){
+            for(k in GS){
+                if((e = $(qsp+'#' + k)) != undefined) e.innerHTML = GS[k];
+            }
+            fadeOut($(qsp+"#l"));
+        },
+        function(){
+            $(qsp+"#l").innerHTML='<h4 style="display:inline;color:red;"><b> Failed</b></h4>';
+        }
+    );
 </script>
