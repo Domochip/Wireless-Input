@@ -16,7 +16,7 @@ const char appDataPredefPassword[] PROGMEM = "ewcXoCt4HHjZUvY1";
 
 #include <ESP8266HTTPClient.h>
 #include <PubSubClient.h>
-#include "SimpleTimer.h"
+#include <Ticker.h>
 
 class WebInput : public Application
 {
@@ -66,19 +66,23 @@ private:
     MQTT mqtt;
   } HomeAutomation;
 
-  bool invert = false;
-
-  HomeAutomation ha;
-
   bool _state = false;
-  SimpleTimer _refreshTimer;
+  bool _invert = false;
+
+  HomeAutomation _ha;
   int _haSendResult = 0;
 
-  WiFiClient *_wifiClient = NULL;
-  WiFiClientSecure *_wifiClientSecure = NULL;
-  PubSubClient *_pubSubClient = NULL;
+  bool _needPublish = false;
+  Ticker _publishTicker;
+  WiFiClient _wifiMqttClient;
+  WiFiClientSecure _wifiMqttClientSecure;
+  PubSubClient _mqttClient;
+  bool _needMqttReconnect = false;
+  Ticker _mqttReconnectTicker;
 
-  void TimerTick();
+  void PublishTick();
+  bool MqttConnect();
+  void MqttCallback(char *topic, uint8_t *payload, unsigned int length);
 
   void SetConfigDefaultValues();
   void ParseConfigJSON(DynamicJsonDocument &doc);
@@ -86,7 +90,7 @@ private:
   String GenerateConfigJSON(bool forSaveFile);
   String GenerateStatusJSON();
   bool AppInit(bool reInit);
-  const uint8_t* GetHTMLContent(WebPageForPlaceHolder wp);
+  const uint8_t *GetHTMLContent(WebPageForPlaceHolder wp);
   size_t GetHTMLContentSize(WebPageForPlaceHolder wp);
   void AppInitWebServer(AsyncWebServer &server, bool &shouldReboot, bool &pauseApplication);
   void AppRun();
