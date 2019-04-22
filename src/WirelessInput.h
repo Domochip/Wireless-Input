@@ -27,7 +27,6 @@ private:
   typedef struct
   {
     byte type = HA_HTTP_GENERIC;
-    byte fingerPrint[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     int cmdId = 0;
     struct
     {
@@ -60,8 +59,9 @@ private:
   typedef struct
   {
     byte protocol = HA_PROTO_DISABLED;
-    bool tls = false;
     char hostname[64 + 1] = {0};
+    bool tls = false;
+    byte fingerPrint[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     HTTP http;
     MQTT mqtt;
   } HomeAutomation;

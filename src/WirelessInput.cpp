@@ -65,7 +65,7 @@ void WebInput::ReadTick()
     return;
 
   //send if input changed or last send result is wrong
-  if (needSend || _haSendResult < 1)
+  if (needSend || !_haSendResult)
   {
 
     Serial.print(F("Send State : "));
@@ -113,7 +113,10 @@ void WebInput::ReadTick()
         http.begin(client, completeURI);
       else
       {
-        clientSecure.setFingerprint(_ha.http.fingerPrint);
+        if (Utils::IsFingerPrintEmpty(_ha.fingerPrint))
+          clientSecure.setInsecure();
+        else
+          clientSecure.setFingerprint(_ha.fingerPrint);
         http.begin(clientSecure, completeURI);
       }
 
@@ -170,11 +173,11 @@ void WebInput::SetConfigDefaultValues()
   _invert = false;
 
   _ha.protocol = HA_PROTO_DISABLED;
-  _ha.tls = true;
   _ha.hostname[0] = 0;
+  _ha.tls = true;
+  memset(_ha.fingerPrint, 0, 20);
 
   _ha.http.type = HA_HTTP_GENERIC;
-  memset(_ha.http.fingerPrint, 0, 20);
   _ha.http.cmdId = 0;
   _ha.http.generic.uriPattern[0] = 0;
   _ha.http.jeedom.apiKey[0] = 0;
@@ -194,15 +197,15 @@ void WebInput::ParseConfigJSON(DynamicJsonDocument &doc)
 
   if (!doc[F("haproto")].isNull())
     _ha.protocol = doc[F("haproto")];
-  if (!doc[F("hatls")].isNull())
-    _ha.tls = doc[F("hatls")];
   if (!doc[F("hahost")].isNull())
     strlcpy(_ha.hostname, doc[F("hahost")], sizeof(_ha.hostname));
+  if (!doc[F("hatls")].isNull())
+    _ha.tls = doc[F("hatls")];
+  if (!doc[F("hafp")].isNull())
+    Utils::FingerPrintS2A(_ha.fingerPrint, doc[F("hafp")]);
 
   if (!doc[F("hahtype")].isNull())
     _ha.http.type = doc[F("hahtype")];
-  if (!doc[F("hahfp")].isNull())
-    Utils::FingerPrintS2A(_ha.http.fingerPrint, doc[F("hahfp")]);
   if (!doc[F("hahcid")].isNull())
     _ha.http.cmdId = doc[F("hahcid")];
 
@@ -240,12 +243,14 @@ bool WebInput::ParseConfigWebRequest(AsyncWebServerRequest *request)
   //if an home Automation protocol has been selected then get common param
   if (_ha.protocol != HA_PROTO_DISABLED)
   {
+    if (request->hasParam(F("hahost"), true) && request->getParam(F("hahost"), true)->value().length() < sizeof(_ha.hostname))
+      strcpy(_ha.hostname, request->getParam(F("hahost"), true)->value().c_str());
     if (request->hasParam(F("hatls"), true))
       _ha.tls = (request->getParam(F("hatls"), true)->value() == F("on"));
     else
       _ha.tls = false;
-    if (request->hasParam(F("hahost"), true) && request->getParam(F("hahost"), true)->value().length() < sizeof(_ha.hostname))
-      strcpy(_ha.hostname, request->getParam(F("hahost"), true)->value().c_str());
+    if (request->hasParam(F("hafp"), true))
+      Utils::FingerPrintS2A(_ha.fingerPrint, request->getParam(F("hafp"), true)->value().c_str());
   }
 
   //Now get specific param
@@ -255,8 +260,6 @@ bool WebInput::ParseConfigWebRequest(AsyncWebServerRequest *request)
 
     if (request->hasParam(F("hahtype"), true))
       _ha.http.type = request->getParam(F("hahtype"), true)->value().toInt();
-    if (request->hasParam(F("hahfp"), true))
-      Utils::FingerPrintS2A(_ha.http.fingerPrint, request->getParam(F("hahfp"), true)->value().c_str());
     if (request->hasParam(F("hahcid"), true))
       _ha.http.cmdId = request->getParam(F("hahcid"), true)->value().toInt();
 
@@ -324,16 +327,15 @@ String WebInput::GenerateConfigJSON(bool forSaveFile = false)
   gc = gc + F("\"inv\":") + _invert;
 
   gc = gc + F(",\"haproto\":") + _ha.protocol;
-  gc = gc + F(",\"hatls\":") + _ha.tls;
   gc = gc + F(",\"hahost\":\"") + _ha.hostname + '"';
+  gc = gc + F(",\"hatls\":") + _ha.tls;
+  gc = gc + F(",\"hafp\":\"") + Utils::FingerPrintA2S(fpStr, _ha.fingerPrint, forSaveFile ? 0 : ':') + '"';
 
   //if for WebPage or protocol selected is HTTP
   if (!forSaveFile || _ha.protocol == HA_PROTO_HTTP)
   {
     gc = gc + F(",\"hahtype\":") + _ha.http.type;
-    gc = gc + F(",\"hahfp\":\"") + Utils::FingerPrintA2S(fpStr, _ha.http.fingerPrint, forSaveFile ? 0 : ':') + '"';
     gc = gc + F(",\"hahcid\":") + _ha.http.cmdId;
-
     gc = gc + F(",\"hahgup\":\"") + _ha.http.generic.uriPattern + '"';
 
     if (forSaveFile)
@@ -444,7 +446,10 @@ bool WebInput::AppInit(bool reInit)
       _mqttClient.setClient(_wifiMqttClient);
     else
     {
-      //_wifiMqttClientSecure.setFingerprint(Utils::FingerPrintA2S(fpStr, ha.fingerPrint));
+      if (Utils::IsFingerPrintEmpty(_ha.fingerPrint))
+        _wifiMqttClientSecure.setInsecure();
+      else
+        _wifiMqttClientSecure.setFingerprint(_ha.fingerPrint);
       _mqttClient.setClient(_wifiMqttClientSecure);
     }
 
@@ -452,16 +457,14 @@ bool WebInput::AppInit(bool reInit)
     MqttConnect();
   }
 
-  if (!reInit)
-  {
 //If a Pin is defined to control signal arrival
 #ifdef SIGNAL_CONTROL_PIN
-    pinMode(SIGNAL_CONTROL_PIN, OUTPUT);
-    digitalWrite(SIGNAL_CONTROL_PIN, LOW);
+  pinMode(SIGNAL_CONTROL_PIN, OUTPUT);
+  digitalWrite(SIGNAL_CONTROL_PIN, LOW);
 #endif
 
-    _readTicker.attach(1, [this]() { this->_needRead = true; });
-  }
+  _readTicker.attach(1, [this]() { this->_needRead = true; });
+
   return true;
 };
 //------------------------------------------
