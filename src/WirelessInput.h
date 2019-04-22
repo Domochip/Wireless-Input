@@ -27,6 +27,8 @@ private:
   typedef struct
   {
     byte type = HA_HTTP_GENERIC;
+    bool tls = false;
+    byte fingerPrint[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     int cmdId = 0;
     struct
     {
@@ -60,8 +62,6 @@ private:
   {
     byte protocol = HA_PROTO_DISABLED;
     char hostname[64 + 1] = {0};
-    bool tls = false;
-    byte fingerPrint[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     HTTP http;
     MQTT mqtt;
   } HomeAutomation;
@@ -75,7 +75,6 @@ private:
   bool _needRead = false;
   Ticker _readTicker;
   WiFiClient _wifiMqttClient;
-  WiFiClientSecure _wifiMqttClientSecure;
   PubSubClient _mqttClient;
   bool _needMqttReconnect = false;
   Ticker _mqttReconnectTicker;

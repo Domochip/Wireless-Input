@@ -89,7 +89,7 @@ void WebInput::ReadTick()
 
       //Replace placeholders
       if (completeURI.indexOf(F("$tls$")) != -1)
-        completeURI.replace(F("$tls$"), _ha.tls ? "s" : "");
+        completeURI.replace(F("$tls$"), _ha.http.tls ? "s" : "");
 
       if (completeURI.indexOf(F("$host$")) != -1)
         completeURI.replace(F("$host$"), _ha.hostname);
@@ -109,14 +109,14 @@ void WebInput::ReadTick()
       HTTPClient http;
 
       //if tls is enabled or not, we need to provide certificate fingerPrint
-      if (!_ha.tls)
+      if (!_ha.http.tls)
         http.begin(client, completeURI);
       else
       {
-        if (Utils::IsFingerPrintEmpty(_ha.fingerPrint))
+        if (Utils::IsFingerPrintEmpty(_ha.http.fingerPrint))
           clientSecure.setInsecure();
         else
-          clientSecure.setFingerprint(_ha.fingerPrint);
+          clientSecure.setFingerprint(_ha.http.fingerPrint);
         http.begin(clientSecure, completeURI);
       }
 
@@ -174,10 +174,10 @@ void WebInput::SetConfigDefaultValues()
 
   _ha.protocol = HA_PROTO_DISABLED;
   _ha.hostname[0] = 0;
-  _ha.tls = true;
-  memset(_ha.fingerPrint, 0, 20);
 
   _ha.http.type = HA_HTTP_GENERIC;
+  _ha.http.tls = true;
+  memset(_ha.http.fingerPrint, 0, 20);
   _ha.http.cmdId = 0;
   _ha.http.generic.uriPattern[0] = 0;
   _ha.http.jeedom.apiKey[0] = 0;
@@ -199,13 +199,13 @@ void WebInput::ParseConfigJSON(DynamicJsonDocument &doc)
     _ha.protocol = doc[F("haproto")];
   if (!doc[F("hahost")].isNull())
     strlcpy(_ha.hostname, doc[F("hahost")], sizeof(_ha.hostname));
-  if (!doc[F("hatls")].isNull())
-    _ha.tls = doc[F("hatls")];
-  if (!doc[F("hafp")].isNull())
-    Utils::FingerPrintS2A(_ha.fingerPrint, doc[F("hafp")]);
 
   if (!doc[F("hahtype")].isNull())
     _ha.http.type = doc[F("hahtype")];
+  if (!doc[F("hahtls")].isNull())
+    _ha.http.tls = doc[F("hahtls")];
+  if (!doc[F("hahfp")].isNull())
+    Utils::FingerPrintS2A(_ha.http.fingerPrint, doc[F("hahfp")]);
   if (!doc[F("hahcid")].isNull())
     _ha.http.cmdId = doc[F("hahcid")];
 
@@ -245,12 +245,6 @@ bool WebInput::ParseConfigWebRequest(AsyncWebServerRequest *request)
   {
     if (request->hasParam(F("hahost"), true) && request->getParam(F("hahost"), true)->value().length() < sizeof(_ha.hostname))
       strcpy(_ha.hostname, request->getParam(F("hahost"), true)->value().c_str());
-    if (request->hasParam(F("hatls"), true))
-      _ha.tls = (request->getParam(F("hatls"), true)->value() == F("on"));
-    else
-      _ha.tls = false;
-    if (request->hasParam(F("hafp"), true))
-      Utils::FingerPrintS2A(_ha.fingerPrint, request->getParam(F("hafp"), true)->value().c_str());
   }
 
   //Now get specific param
@@ -260,6 +254,12 @@ bool WebInput::ParseConfigWebRequest(AsyncWebServerRequest *request)
 
     if (request->hasParam(F("hahtype"), true))
       _ha.http.type = request->getParam(F("hahtype"), true)->value().toInt();
+    if (request->hasParam(F("hahtls"), true))
+      _ha.http.tls = (request->getParam(F("hahtls"), true)->value() == F("on"));
+    else
+      _ha.http.tls = false;
+    if (request->hasParam(F("hahfp"), true))
+      Utils::FingerPrintS2A(_ha.http.fingerPrint, request->getParam(F("hahfp"), true)->value().c_str());
     if (request->hasParam(F("hahcid"), true))
       _ha.http.cmdId = request->getParam(F("hahcid"), true)->value().toInt();
 
@@ -328,13 +328,13 @@ String WebInput::GenerateConfigJSON(bool forSaveFile = false)
 
   gc = gc + F(",\"haproto\":") + _ha.protocol;
   gc = gc + F(",\"hahost\":\"") + _ha.hostname + '"';
-  gc = gc + F(",\"hatls\":") + _ha.tls;
-  gc = gc + F(",\"hafp\":\"") + Utils::FingerPrintA2S(fpStr, _ha.fingerPrint, forSaveFile ? 0 : ':') + '"';
 
   //if for WebPage or protocol selected is HTTP
   if (!forSaveFile || _ha.protocol == HA_PROTO_HTTP)
   {
     gc = gc + F(",\"hahtype\":") + _ha.http.type;
+    gc = gc + F(",\"hahtls\":") + _ha.http.tls;
+    gc = gc + F(",\"hahfp\":\"") + Utils::FingerPrintA2S(fpStr, _ha.http.fingerPrint, forSaveFile ? 0 : ':') + '"';
     gc = gc + F(",\"hahcid\":") + _ha.http.cmdId;
     gc = gc + F(",\"hahgup\":\"") + _ha.http.generic.uriPattern + '"';
 
@@ -438,20 +438,8 @@ bool WebInput::AppInit(bool reInit)
   //if MQTT used so configure it
   if (_ha.protocol == HA_PROTO_MQTT)
   {
-    //setup server
-    _mqttClient.setServer(_ha.hostname, _ha.mqtt.port).setCallback(std::bind(&WebInput::MqttCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
-
-    //setup client used
-    if (!_ha.tls)
-      _mqttClient.setClient(_wifiMqttClient);
-    else
-    {
-      if (Utils::IsFingerPrintEmpty(_ha.fingerPrint))
-        _wifiMqttClientSecure.setInsecure();
-      else
-        _wifiMqttClientSecure.setFingerprint(_ha.fingerPrint);
-      _mqttClient.setClient(_wifiMqttClientSecure);
-    }
+    //setup MQTT client
+    _mqttClient.setClient(_wifiMqttClient).setServer(_ha.hostname, _ha.mqtt.port).setCallback(std::bind(&WebInput::MqttCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
     //Connect
     MqttConnect();
