@@ -104,20 +104,18 @@ void WebInput::ReadTick()
         completeURI.replace(F("$apikey$"), _ha.http.jeedom.apiKey);
 
       //create HTTP request
-      WiFiClient client;
-      WiFiClientSecure clientSecure;
       HTTPClient http;
 
       //if tls is enabled or not, we need to provide certificate fingerPrint
       if (!_ha.http.tls)
-        http.begin(client, completeURI);
+        http.begin(_wifiClient, completeURI);
       else
       {
         if (Utils::IsFingerPrintEmpty(_ha.http.fingerPrint))
-          clientSecure.setInsecure();
+          _wifiClientSecure.setInsecure();
         else
-          clientSecure.setFingerprint(_ha.http.fingerPrint);
-        http.begin(clientSecure, completeURI);
+          _wifiClientSecure.setFingerprint(_ha.http.fingerPrint);
+        http.begin(_wifiClientSecure, completeURI);
       }
 
       _haSendResult = (http.GET() == 200);
@@ -439,7 +437,7 @@ bool WebInput::AppInit(bool reInit)
   if (_ha.protocol == HA_PROTO_MQTT)
   {
     //setup MQTT client
-    _mqttClient.setClient(_wifiMqttClient).setServer(_ha.hostname, _ha.mqtt.port).setCallback(std::bind(&WebInput::MqttCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+    _mqttClient.setClient(_wifiClient).setServer(_ha.hostname, _ha.mqtt.port).setCallback(std::bind(&WebInput::MqttCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
     //Connect
     MqttConnect();

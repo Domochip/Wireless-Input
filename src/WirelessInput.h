@@ -71,10 +71,11 @@ private:
 
   HomeAutomation _ha;
   int _haSendResult = 0;
+  WiFiClient _wifiClient;
+  WiFiClientSecure _wifiClientSecure;
 
   bool _needRead = false;
   Ticker _readTicker;
-  WiFiClient _wifiMqttClient;
   PubSubClient _mqttClient;
   bool _needMqttReconnect = false;
   Ticker _mqttReconnectTicker;
