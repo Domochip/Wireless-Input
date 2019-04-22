@@ -113,8 +113,7 @@ void WebInput::ReadTick()
         http.begin(client, completeURI);
       else
       {
-        char fpStr[41];
-        clientSecure.setFingerprint(Utils::FingerPrintA2S(fpStr, _ha.http.fingerPrint));
+        clientSecure.setFingerprint(_ha.http.fingerPrint);
         http.begin(clientSecure, completeURI);
       }
 
