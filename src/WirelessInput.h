@@ -72,15 +72,15 @@ private:
   HomeAutomation _ha;
   int _haSendResult = 0;
 
-  bool _needPublish = false;
-  Ticker _publishTicker;
+  bool _needRead = false;
+  Ticker _readTicker;
   WiFiClient _wifiMqttClient;
   WiFiClientSecure _wifiMqttClientSecure;
   PubSubClient _mqttClient;
   bool _needMqttReconnect = false;
   Ticker _mqttReconnectTicker;
 
-  void PublishTick();
+  void ReadTick();
   bool MqttConnect();
   void MqttCallback(char *topic, uint8_t *payload, unsigned int length);
 

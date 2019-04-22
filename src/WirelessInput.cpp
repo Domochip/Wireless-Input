@@ -34,8 +34,8 @@ bool WebInput::MqttConnect()
 void WebInput::MqttCallback(char *topic, uint8_t *payload, unsigned int length) {}
 
 //------------------------------------------
-// Execute code to publish input state
-void WebInput::PublishTick()
+// Execute code to read and publish input state
+void WebInput::ReadTick()
 {
   bool needSend = false;
 
@@ -426,8 +426,8 @@ String WebInput::GenerateStatusJSON()
 //code to execute during initialization and reinitialization of the app
 bool WebInput::AppInit(bool reInit)
 {
-  //Stop Publish
-  _publishTicker.detach();
+  //Stop Read input
+  _readTicker.detach();
 
   //Stop MQTT Reconnect
   _mqttReconnectTicker.detach();
@@ -461,9 +461,7 @@ bool WebInput::AppInit(bool reInit)
     digitalWrite(SIGNAL_CONTROL_PIN, LOW);
 #endif
 
-    //if HA enabled, start Ticker
-    if (_ha.protocol != HA_PROTO_DISABLED)
-      _publishTicker.attach(1, [this]() { this->_needPublish = true; });
+    _readTicker.attach(1, [this]() { this->_needRead = true; });
   }
   return true;
 };
@@ -533,11 +531,11 @@ void WebInput::AppRun()
   if (_ha.protocol == HA_PROTO_MQTT)
     _mqttClient.loop();
 
-  if (_needPublish)
+  if (_needRead)
   {
-    _needPublish = false;
-    Serial.println(F("PublishTick"));
-    PublishTick();
+    _needRead = false;
+    Serial.println(F("ReadTick"));
+    ReadTick();
   }
 }
 
