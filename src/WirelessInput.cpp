@@ -42,9 +42,9 @@ void WebInput::ReadTick()
   //if input pin is RX
 #if SIGNAL_PIN == 3
   //flush then stop serial port
-  Serial.flush();
+  LOG_SERIAL.flush();
   delay(5);
-  Serial.end();
+  LOG_SERIAL.end();
 #endif
 
   //if input changed
@@ -57,7 +57,7 @@ void WebInput::ReadTick()
   //if input pin is RX
 #if SIGNAL_PIN == 3
   //restart Serial
-  Serial.begin(SERIAL_SPEED);
+  LOG_SERIAL.begin(LOG_SERIAL_SPEED);
 #endif
 
   //if Home Automation upload not enabled then return
@@ -68,8 +68,8 @@ void WebInput::ReadTick()
   if (needSend || !_haSendResult)
   {
 
-    Serial.print(F("Send State : "));
-    Serial.println(_state ? 1 : 0);
+    LOG_SERIAL.print(F("Send State : "));
+    LOG_SERIAL.println(_state ? 1 : 0);
 
     //----- HTTP Protocol configured -----
     if (_ha.protocol == HA_PROTO_HTTP)
@@ -501,17 +501,17 @@ void WebInput::AppRun()
   if (_needMqttReconnect)
   {
     _needMqttReconnect = false;
-    Serial.print(F("MQTT Reconnection : "));
+    LOG_SERIAL.print(F("MQTT Reconnection : "));
     if (MqttConnect())
-      Serial.println(F("OK"));
+      LOG_SERIAL.println(F("OK"));
     else
-      Serial.println(F("Failed"));
+      LOG_SERIAL.println(F("Failed"));
   }
 
   //if MQTT required but not connected and reconnect ticker not started
   if (_ha.protocol == HA_PROTO_MQTT && !_mqttClient.connected() && !_mqttReconnectTicker.active())
   {
-    Serial.println(F("MQTT Disconnected"));
+    LOG_SERIAL.println(F("MQTT Disconnected"));
     //set Ticker to reconnect after 20 or 60 sec (Wifi connected or not)
     _mqttReconnectTicker.once_scheduled((WiFi.isConnected() ? 20 : 60), [this]() { _needMqttReconnect = true; _mqttReconnectTicker.detach(); });
   }
@@ -522,7 +522,7 @@ void WebInput::AppRun()
   if (_needRead)
   {
     _needRead = false;
-    Serial.println(F("ReadTick"));
+    LOG_SERIAL.println(F("ReadTick"));
     ReadTick();
   }
 }
