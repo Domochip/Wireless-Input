@@ -19,6 +19,9 @@
 #define DEFAULT_AP_SSID "WirelessInput"
 #define DEFAULT_AP_PSK "PasswordInput"
 
+//Enable status webpage EventSource
+#define ENABLE_STATUS_EVENTSOURCE 0
+
 //FOR ESP-01 : reduced amount of GPIO and the fact that they need to be up at start, enforce to control signal arrival
 //(I cabled GPIO0 instead of GND to the Mosfet with a pull-up resistor, that way, signal comes only if GPIO0 go to GND)
 #define SIGNAL_CONTROL_PIN 0
