@@ -2,15 +2,15 @@
 
 //------------------------------------------
 // Connect then Subscribe to MQTT
-void WebInput::MqttConnectedCallback(MQTTMan *mqttMan, bool firstConnection) {}
+void WebInput::mqttConnectedCallback(MQTTMan *mqttMan, bool firstConnection) {}
 
 //------------------------------------------
 //Callback used when an MQTT message arrived
-void WebInput::MqttCallback(char *topic, uint8_t *payload, unsigned int length) {}
+void WebInput::mqttCallback(char *topic, uint8_t *payload, unsigned int length) {}
 
 //------------------------------------------
 // Execute code to read and publish input state
-void WebInput::ReadTick()
+void WebInput::readTick()
 {
   bool needSend = false;
 
@@ -86,7 +86,7 @@ void WebInput::ReadTick()
         http.begin(_wifiClient, completeURI);
       else
       {
-        if (Utils::IsFingerPrintEmpty(_ha.http.fingerPrint))
+        if (Utils::isFingerPrintEmpty(_ha.http.fingerPrint))
           _wifiClientSecure.setInsecure();
         else
           _wifiClientSecure.setFingerprint(_ha.http.fingerPrint);
@@ -101,7 +101,7 @@ void WebInput::ReadTick()
     if (_ha.protocol == HA_PROTO_MQTT)
     {
       //if we are connected
-      if (m_mqttMan.connected())
+      if (_mqttMan.connected())
       {
         //prepare topic
         String completeTopic = _ha.mqtt.generic.baseTopic;
@@ -118,7 +118,7 @@ void WebInput::ReadTick()
         }
 
         //send
-        _haSendResult = m_mqttMan.publish(completeTopic.c_str(), _state ? "1" : "0");
+        _haSendResult = _mqttMan.publish(completeTopic.c_str(), _state ? "1" : "0");
       }
     }
   }
@@ -126,7 +126,7 @@ void WebInput::ReadTick()
 
 //------------------------------------------
 //Used to initialize configuration properties to default values
-void WebInput::SetConfigDefaultValues()
+void WebInput::setConfigDefaultValues()
 {
   _invert = false;
 
@@ -148,7 +148,7 @@ void WebInput::SetConfigDefaultValues()
 };
 //------------------------------------------
 //Parse JSON object into configuration properties
-void WebInput::ParseConfigJSON(DynamicJsonDocument &doc)
+void WebInput::parseConfigJSON(DynamicJsonDocument &doc)
 {
   if (!doc[F("inv")].isNull())
     _invert = doc[F("inv")];
@@ -163,7 +163,7 @@ void WebInput::ParseConfigJSON(DynamicJsonDocument &doc)
   if (!doc[F("hahtls")].isNull())
     _ha.http.tls = doc[F("hahtls")];
   if (!doc[F("hahfp")].isNull())
-    Utils::FingerPrintS2A(_ha.http.fingerPrint, doc[F("hahfp")]);
+    Utils::fingerPrintS2A(_ha.http.fingerPrint, doc[F("hahfp")]);
   if (!doc[F("hahcid")].isNull())
     _ha.http.cmdId = doc[F("hahcid")];
 
@@ -187,7 +187,7 @@ void WebInput::ParseConfigJSON(DynamicJsonDocument &doc)
 };
 //------------------------------------------
 //Parse HTTP POST parameters in request into configuration properties
-bool WebInput::ParseConfigWebRequest(AsyncWebServerRequest *request)
+bool WebInput::parseConfigWebRequest(AsyncWebServerRequest *request)
 {
   if (request->hasParam(F("inv"), true))
     _invert = (request->getParam(F("inv"), true)->value() == F("on"));
@@ -217,7 +217,7 @@ bool WebInput::ParseConfigWebRequest(AsyncWebServerRequest *request)
     else
       _ha.http.tls = false;
     if (request->hasParam(F("hahfp"), true))
-      Utils::FingerPrintS2A(_ha.http.fingerPrint, request->getParam(F("hahfp"), true)->value().c_str());
+      Utils::fingerPrintS2A(_ha.http.fingerPrint, request->getParam(F("hahfp"), true)->value().c_str());
     if (request->hasParam(F("hahcid"), true))
       _ha.http.cmdId = request->getParam(F("hahcid"), true)->value().toInt();
 
@@ -276,7 +276,7 @@ bool WebInput::ParseConfigWebRequest(AsyncWebServerRequest *request)
 };
 //------------------------------------------
 //Generate JSON from configuration properties
-String WebInput::GenerateConfigJSON(bool forSaveFile = false)
+String WebInput::generateConfigJSON(bool forSaveFile = false)
 {
   char fpStr[60];
 
@@ -292,7 +292,7 @@ String WebInput::GenerateConfigJSON(bool forSaveFile = false)
   {
     gc = gc + F(",\"hahtype\":") + _ha.http.type;
     gc = gc + F(",\"hahtls\":") + _ha.http.tls;
-    gc = gc + F(",\"hahfp\":\"") + Utils::FingerPrintA2S(fpStr, _ha.http.fingerPrint, forSaveFile ? 0 : ':') + '"';
+    gc = gc + F(",\"hahfp\":\"") + Utils::fingerPrintA2S(fpStr, _ha.http.fingerPrint, forSaveFile ? 0 : ':') + '"';
     gc = gc + F(",\"hahcid\":") + _ha.http.cmdId;
     gc = gc + F(",\"hahgup\":\"") + _ha.http.generic.uriPattern + '"';
 
@@ -322,7 +322,7 @@ String WebInput::GenerateConfigJSON(bool forSaveFile = false)
 };
 //------------------------------------------
 //Generate JSON of application status
-String WebInput::GenerateStatusJSON()
+String WebInput::generateStatusJSON()
 {
   String gs('{');
 
@@ -339,7 +339,7 @@ String WebInput::GenerateStatusJSON()
     break;
   case HA_PROTO_MQTT:
     gs = gs + F("MQTT Connection State : ");
-    switch (m_mqttMan.state())
+    switch (_mqttMan.state())
     {
     case MQTT_CONNECTION_TIMEOUT:
       gs = gs + F("Timed Out");
@@ -370,7 +370,7 @@ String WebInput::GenerateStatusJSON()
       break;
     }
 
-    if (m_mqttMan.state() == MQTT_CONNECTED)
+    if (_mqttMan.state() == MQTT_CONNECTED)
       gs = gs + F("\",\"has2\":\"Last Publish Result : ") + (_haSendResult ? F("OK") : F("Failed"));
 
     break;
@@ -383,13 +383,13 @@ String WebInput::GenerateStatusJSON()
 };
 //------------------------------------------
 //code to execute during initialization and reinitialization of the app
-bool WebInput::AppInit(bool reInit)
+bool WebInput::appInit(bool reInit)
 {
   //Stop Read input
   _readTicker.detach();
 
   //Stop MQTT
-  m_mqttMan.disconnect();
+  _mqttMan.disconnect();
 
   //if MQTT used so configure it
   if (_ha.protocol == HA_PROTO_MQTT)
@@ -400,13 +400,13 @@ bool WebInput::AppInit(bool reInit)
     willTopic += F("connected");
 
     //setup MQTT
-    m_mqttMan.setClient(_wifiClient).setServer(_ha.hostname, _ha.mqtt.port);
-    m_mqttMan.setConnectedAndWillTopic(willTopic.c_str());
-    m_mqttMan.setConnectedCallback(std::bind(&WebInput::MqttConnectedCallback, this, std::placeholders::_1, std::placeholders::_2));
-    m_mqttMan.setCallback(std::bind(&WebInput::MqttCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+    _mqttMan.setClient(_wifiClient).setServer(_ha.hostname, _ha.mqtt.port);
+    _mqttMan.setConnectedAndWillTopic(willTopic.c_str());
+    _mqttMan.setConnectedCallback(std::bind(&WebInput::mqttConnectedCallback, this, std::placeholders::_1, std::placeholders::_2));
+    _mqttMan.setCallback(std::bind(&WebInput::mqttCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
     //Connect
-    m_mqttMan.connect(_ha.mqtt.username, _ha.mqtt.password);
+    _mqttMan.connect(_ha.mqtt.username, _ha.mqtt.password);
   }
 
 //If a Pin is defined to control signal arrival
@@ -421,7 +421,7 @@ bool WebInput::AppInit(bool reInit)
 };
 //------------------------------------------
 //Return HTML Code to insert into Status Web page
-const uint8_t *WebInput::GetHTMLContent(WebPageForPlaceHolder wp)
+const uint8_t *WebInput::getHTMLContent(WebPageForPlaceHolder wp)
 {
   switch (wp)
   {
@@ -438,7 +438,7 @@ const uint8_t *WebInput::GetHTMLContent(WebPageForPlaceHolder wp)
   return nullptr;
 };
 //and his Size
-size_t WebInput::GetHTMLContentSize(WebPageForPlaceHolder wp)
+size_t WebInput::getHTMLContentSize(WebPageForPlaceHolder wp)
 {
   switch (wp)
   {
@@ -456,22 +456,22 @@ size_t WebInput::GetHTMLContentSize(WebPageForPlaceHolder wp)
 };
 //------------------------------------------
 //code to register web request answer to the web server
-void WebInput::AppInitWebServer(AsyncWebServer &server, bool &shouldReboot, bool &pauseApplication){
+void WebInput::appInitWebServer(AsyncWebServer &server, bool &shouldReboot, bool &pauseApplication){
     //Nothing to do
 };
 
 //------------------------------------------
 //Run for timer and MQTT if required
-void WebInput::AppRun()
+void WebInput::appRun()
 {
   if (_ha.protocol == HA_PROTO_MQTT)
-    m_mqttMan.loop();
+    _mqttMan.loop();
 
   if (_needRead)
   {
     _needRead = false;
     LOG_SERIAL.println(F("ReadTick"));
-    ReadTick();
+    readTick();
   }
 }
 
